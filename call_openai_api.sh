@@ -32,17 +32,17 @@ Usage: $(basename "$0") [OPTIONS] [SYSTEM] [USER]
 Sends messages to OpenAI API and returns the JSON response.
 
 Arguments:
-  SYSTEM              Optional system message
-  USER                Optional user message
+  SYSTEM               Optional system message
+  USER                 Optional user message
 
 Options:
-  -s, --system FILE   Read system message from file (use - for stdin)
-  -u, --user FILE     Read user message from file (use - for stdin)
-  -o, --output FILE   Write response to file instead of stdout
-  -e, --endpoint URL  API endpoint (default: '$OPENAI_API_ENDPOINT')
-  -m, --model NAME    Model name (default: '$OPENAI_MODEL')
-  -k, --key KEY       API key (default: '\$OPENAI_API_KEY')
-  -h, --help          Show this help message
+  -s, --system FILE    Read system message from file (use - for stdin)
+  -u, --user FILE      Read user message from file (use - for stdin)
+  -o, --output FILE    Write response to file instead of stdout
+  -e, --endpoint URL   API endpoint (default: $OPENAI_API_ENDPOINT)
+  -m, --model NAME     Model name (default: $OPENAI_MODEL)
+  -k, --key KEY        API key (default: \$OPENAI_API_KEY)
+  -h, --help           Show this help message
 
 Environment Variables:
   OPENAI_API_ENDPOINT  API endpoint (can be set with --endpoint)

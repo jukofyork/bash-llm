@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Check if OPENAI_API_KEY is set
+if [[ -z "${OPENAI_API_KEY}" ]]; then
+    echo "ERROR: OPENAI_API_KEY environment variable must be set to run these tests"
+    exit 1
+fi
+
 # Helper functions
 expect_success() {
     local desc="$1"
