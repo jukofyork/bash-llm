@@ -53,7 +53,7 @@ Examples:
   $(basename "$0") -i template.txt NAME="John" BIO=<bio.txt
   echo "Hello \${NAME}!" | $(basename "$0") - NAME=<names.txt
 EOF
-    exit 1
+    exit 0
 }
 
 # Initialize variables

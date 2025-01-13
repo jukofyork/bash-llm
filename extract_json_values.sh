@@ -54,7 +54,7 @@ Examples:
   $(basename "$0") -i person.json name age
   IFS='|' read -r name age < <($(basename "$0") -i person.json name age)
 EOF
-    exit 1
+    exit 0
 }
 
 # Initialize variables

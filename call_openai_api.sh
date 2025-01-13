@@ -65,7 +65,7 @@ Examples:
   $(basename "$0") -s system.txt -u prompt.txt
   echo "Hello" | $(basename "$0") -s system.txt
 EOF
-    exit 1
+    exit 0
 }
 
 # Parse command line arguments

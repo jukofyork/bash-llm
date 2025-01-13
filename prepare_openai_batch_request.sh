@@ -61,7 +61,7 @@ Examples:
   $(basename "$0") -a batch.jsonl "What is 3+3?"
   $(basename "$0") -s system.txt -u prompt.txt -o batch.jsonl
 EOF
-    exit 1
+    exit 0
 }
 
 # Parse command line arguments
