@@ -47,52 +47,52 @@ echo "Another test message" > "$test_dir/other.txt"
 
 # Valid input combinations
 expect_success "Direct messages (system + user)" \
-    './call_openai_api.sh "You are helpful. Respond using JSON." "Tell me about bash"'
+    './api_call.sh "You are helpful. Respond using JSON." "Tell me about bash"'
 
 expect_success "Single user message" \
-    './call_openai_api.sh "Tell me about bash. Respond in JSON format."'
+    './api_call.sh "Tell me about bash. Respond in JSON format."'
 
 expect_success "System from file, user from arg" \
-    './call_openai_api.sh -s "$test_dir/system.txt" "Tell me about bash"'
+    './api_call.sh -s "$test_dir/system.txt" "Tell me about bash"'
 
 expect_success "Both from files" \
-    './call_openai_api.sh -s "$test_dir/system.txt" -u "$test_dir/user.txt"'
+    './api_call.sh -s "$test_dir/system.txt" -u "$test_dir/user.txt"'
 
 expect_success "System from file, user from stdin" \
-    'echo "Hello" | ./call_openai_api.sh -s "$test_dir/system.txt"'
+    'echo "Hello" | ./api_call.sh -s "$test_dir/system.txt"'
 
 expect_success "User from stdin only" \
-    'echo "Hello. Return your response as JSON." | ./call_openai_api.sh'
+    'echo "Hello. Return your response as JSON." | ./api_call.sh'
 
 expect_success "System from stdin" \
-    'echo "Be helpful and always use JSON format." | ./call_openai_api.sh -s - "Tell me about bash"'
+    'echo "Be helpful and always use JSON format." | ./api_call.sh -s - "Tell me about bash"'
 
 expect_success "User from stdin via option" \
-    'echo "Tell me about bash. Format as JSON." | ./call_openai_api.sh -u -'
+    'echo "Tell me about bash. Format as JSON." | ./api_call.sh -u -'
 
 # Error conditions
 expect_failure "No input provided" \
-    './call_openai_api.sh' \
+    './api_call.sh' \
     "No user message provided"
 
 expect_failure "Missing file" \
-    './call_openai_api.sh -s nonexistent.txt "Hello"' \
+    './api_call.sh -s nonexistent.txt "Hello"' \
     "No such file"
 
 expect_failure "Too many arguments" \
-    './call_openai_api.sh arg1 arg2 arg3' \
+    './api_call.sh arg1 arg2 arg3' \
     "Unexpected argument"
 
 expect_failure "Invalid option" \
-    './call_openai_api.sh --invalid option' \
+    './api_call.sh --invalid option' \
     "Unknown option"
 
 expect_failure "Missing API key" \
-    'OPENAI_API_KEY="" ./call_openai_api.sh "Hello"' \
+    'OPENAI_API_KEY="" ./api_call.sh "Hello"' \
     "API key must be provided"
 
 expect_success "Output to file" \
-    './call_openai_api.sh -o "$test_dir/output.json" "Tell me about bash. Respond in JSON format."'
+    './api_call.sh -o "$test_dir/output.json" "Tell me about bash. Respond in JSON format."'
 
 expect_success "Verify output file contains valid JSON" \
     'jq "." "$test_dir/output.json" >/dev/null'

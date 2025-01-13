@@ -46,57 +46,57 @@ echo '{"invalid":}' > "$test_dir/invalid.json"
 
 # Valid input combinations
 expect_success "Single key extraction" \
-    './extract_json_values.sh '\''{"name":"John"}'\'' name' \
+    './json_extract.sh '\''{"name":"John"}'\'' name' \
     "John"
 
 expect_success "Multiple key extraction" \
-    './extract_json_values.sh '\''{"name":"John","age":42}'\'' name age' \
+    './json_extract.sh '\''{"name":"John","age":42}'\'' name age' \
     "John|42"
 
 expect_success "Custom separator" \
-    './extract_json_values.sh -s "," '\''{"name":"John","age":42}'\'' name age' \
+    './json_extract.sh -s "," '\''{"name":"John","age":42}'\'' name age' \
     "John,42"
 
 expect_success "Custom null value" \
-    './extract_json_values.sh -n "NONE" '\''{"name":"John","missing":null}'\'' name missing' \
+    './json_extract.sh -n "NONE" '\''{"name":"John","missing":null}'\'' name missing' \
     "John|NONE"
 
 expect_success "JSON from file" \
-    './extract_json_values.sh -i "$test_dir/person.json" name age' \
+    './json_extract.sh -i "$test_dir/person.json" name age' \
     "John|42"
 
 expect_success "JSON from stdin" \
-    'echo '\''{"name":"John"}'\'' | ./extract_json_values.sh - name' \
+    'echo '\''{"name":"John"}'\'' | ./json_extract.sh - name' \
     "John"
 
 expect_success "Newline separator" \
-    './extract_json_values.sh -s "\\n" '\''{"name":"John","age":42}'\'' name age' \
+    './json_extract.sh -s "\\n" '\''{"name":"John","age":42}'\'' name age' \
     $'John\n42'
 
 # Error conditions
 expect_failure "No JSON provided" \
-    './extract_json_values.sh' \
+    './json_extract.sh' \
     "No JSON content provided"
 
 expect_failure "No keys specified" \
-    './extract_json_values.sh '\''{"name":"John"}'\''' \
+    './json_extract.sh '\''{"name":"John"}'\''' \
     "No keys specified"
 
 expect_failure "Invalid JSON" \
-    './extract_json_values.sh -i "$test_dir/invalid.json" name' \
+    './json_extract.sh -i "$test_dir/invalid.json" name' \
     "Invalid JSON content"
 
 expect_failure "Missing JSON file" \
-    './extract_json_values.sh -i nonexistent.json name' \
+    './json_extract.sh -i nonexistent.json name' \
     "No such file"
 
 expect_failure "Invalid option" \
-    './extract_json_values.sh --invalid option' \
+    './json_extract.sh --invalid option' \
     "Unknown option"
 
 # Output file testing
 expect_success "Output to file" \
-    './extract_json_values.sh -o "$test_dir/output.txt" '\''{"name":"John"}'\'' name'
+    './json_extract.sh -o "$test_dir/output.txt" '\''{"name":"John"}'\'' name'
 
 expect_success "Verify output file content" \
     'cat "$test_dir/output.txt"' \

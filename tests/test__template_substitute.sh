@@ -48,49 +48,49 @@ echo "biography text" > "$test_dir/bio.txt"
 
 # Valid input combinations
 expect_success "Direct template and variable" \
-    './substitute_template.sh "Hello \${NAME}!" NAME="World"' \
+    './template_substitute.sh "Hello \${NAME}!" NAME="World"' \
     "Hello World!"
 
 expect_success "Multiple variables" \
-    './substitute_template.sh "Hi \${FIRST} \${LAST}!" FIRST="John" LAST="Doe"' \
+    './template_substitute.sh "Hi \${FIRST} \${LAST}!" FIRST="John" LAST="Doe"' \
     "Hi John Doe!"
 
 expect_success "Template from file" \
-    './substitute_template.sh -i "$test_dir/template.txt" NAME="World"' \
+    './template_substitute.sh -i "$test_dir/template.txt" NAME="World"' \
     "Hello World!"
 
 expect_success "Variable from file" \
-    './substitute_template.sh "Hello \${NAME}!" NAME=\<"$test_dir/name.txt"' \
+    './template_substitute.sh "Hello \${NAME}!" NAME=\<"$test_dir/name.txt"' \
     "Hello John!"
 
 expect_success "Complex substitution" \
-    './substitute_template.sh -i "$test_dir/complex.txt" NAME=\<"$test_dir/name.txt" BIO=\<"$test_dir/bio.txt"' \
+    './template_substitute.sh -i "$test_dir/complex.txt" NAME=\<"$test_dir/name.txt" BIO=\<"$test_dir/bio.txt"' \
     "This is John's biography text"
 
 expect_success "Template from stdin" \
-    'echo "Hello \${NAME}!" | ./substitute_template.sh - NAME="World"' \
+    'echo "Hello \${NAME}!" | ./template_substitute.sh - NAME="World"' \
     "Hello World!"
 
 # Error conditions
 expect_failure "No template provided" \
-    './substitute_template.sh' \
+    './template_substitute.sh' \
     "No template provided"
 
 expect_failure "Missing template file" \
-    './substitute_template.sh -i nonexistent.txt NAME="World"' \
+    './template_substitute.sh -i nonexistent.txt NAME="World"' \
     "No such file"
 
 expect_failure "Missing variable file" \
-    './substitute_template.sh "Hello \${NAME}!" NAME=\<nonexistent.txt' \
+    './template_substitute.sh "Hello \${NAME}!" NAME=\<nonexistent.txt' \
     "Variable file not found"
 
 expect_failure "Invalid option" \
-    './substitute_template.sh --invalid option' \
+    './template_substitute.sh --invalid option' \
     "Unknown option"
 
 # Output file testing
 expect_success "Output to file" \
-    './substitute_template.sh -o "$test_dir/output.txt" "Hello \${NAME}!" NAME="World"'
+    './template_substitute.sh -o "$test_dir/output.txt" "Hello \${NAME}!" NAME="World"'
 
 expect_success "Verify output file content" \
     'cat "$test_dir/output.txt"' \
