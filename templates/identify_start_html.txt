@@ -1,0 +1,32 @@
+# Task: Locate the start of the main content in this book
+
+Carefully examine the initial section of this book in HTML format:
+
+```html
+${context}
+```
+
+Try to identify where the main narrative (or factual if a non-fiction book) content begins:
+
+- IGNORE IRRELEVANT SECTIONS: Exclude all "front matter" content such as copyright notices, tables of contents, author's notes, dedications, epigraphs, or other preliminary material.
+- USE THE CONTEXT: Search for chapter headings like "Preface", "Prologue", "Chapter: XXX", "Chapter 1", or even just "1". If there is a table of contents, check if it provides any hints about where the main content starts.
+- LOOK FOR CLUES: For each candidate, examine the preceding line(s) for indicators of chapter headings that might signal the beginning of the main content. Look for HTML header tags, bold or italic formatting, or text in all caps.
+- BE CAUTIOUS: The provided initial book section may not actually contain the transition to the narrative/factual content, or even have any "front matter" content at all. Don't assume it does!
+
+Respond using this JSON format:
+
+```json
+{
+    "candidates": ["string1", "string2", ...],
+    "analysis": "string",
+    "first_header": "string",
+    "first_paragraph": "string"
+}
+```
+
+1. The `candidates` array should list all the headers and paragraphs that you think could potentially be the beginning of the book's main content.
+2. Use the `analysis` string to explain how you evaluated each candidate in relation to the surrounding text, or why you think the book doesn't actually have any "front matter" content.
+3. If you are reasonably confident you have successfully identified the beginning, then set `first_header` and `first_paragraph` based on your analysis.
+4. If you are still unsure of where the main content begins, then set both `first_header` and `first_paragraph` to `null`.
+5. If you have identified the first paragraph but think there is no header that goes before it, then set only `first_header` to `null`.
+6. If your analysis indicates that there is no "front matter" content present, then set both `first_header` and `first_paragraph` to "none".

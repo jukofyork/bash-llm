@@ -1,0 +1,30 @@
+# Task: Locate the last paragraph in this book
+
+Carefully examine this final section of a book in HTML format:
+
+```html
+${context}
+```
+
+Identify the last paragraph where the main narrative (or factual content for non-fiction) ends and any "end matter" section(s) begin:
+
+- IGNORE IRRELEVANT SECTIONS: Exclude all "end matter" sections such as appendices, indexes, glossaries, author biographies, reading group guides, advertisements, or other supplementary material.
+- USE THE CONTEXT: Search for phrases like "The End", "Epilogue", or "Conclusion". If there is an index, check if it provides any hints about where the main content ends.
+- LOOK FOR CLUES: For each candidate paragraph, examine the subsequent line for indications of "end matter" section headings. Look for elements like HTML header tags, bold formatting, or text in all caps.
+- BE CAUTIOUS: The provided final book section may not actually contain the end of the content. Don't assume it does!
+
+Respond using this JSON format:
+
+```json
+{
+  "candidates": ["string1", "string2", "string3"],
+  "analysis": "string",
+  "last_paragraph": "string"|null
+}
+```
+
+1. The `candidates` array should list all paragraphs that you think could potentially be the last paragraph of the main content.
+2. The `analysis` string should explain how you considered each candidate in relation to the subsequent line to come up with your final decision.
+3. `last_paragraph` should be your best guess from the considered candidates, or `null` if still too unsure.
+
+**IMPORTANT**: Don't set `last_paragraph` unless you are reasonably confident you have successfully identified the correct closing paragraph!!!

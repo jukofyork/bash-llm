@@ -1,0 +1,35 @@
+# Task: Locate the start of the supplementary/irrelevant content in this book
+
+Carefully examine the final section of this book in HTML format:
+
+```html
+${context}
+```
+
+Try to identify where the main narrative (or factual if a non-fiction book) content ends, and the supplementary "end matter" content begins:
+
+- SUPPLEMENTARY SECTIONS: Look for clear markers of traditional "end matter" content such as appendices, notes, bibliography, glossary, index, author biography, acknowledgments, or advertisements.
+- IRRELEVANT SECTIONS: Also look for "nontraditional" content which is unrelated to the main narrative/factual content of the book like publication details, licensing information, copyright notices, acknowledgments, and so on.
+- EPILOGUES: Don't count "Epilogue" sections as "end matter" content (even if they traditionally are) - they are nearly always an essential part of the main narrative/factual content and it would be a disaster to remove them!!!
+- USE THE CONTEXT: Search for section headings like "Appendix", "Notes", "Index", "About the Author", "Reading Group Guide", "Afterword", and so on.
+- LOOK FOR CLUES: For each candidate paragraph, examine the preceding line(s) for changes that might signal the beginning of the supplementary content. Look for HTML header tags, bold or italic formatting, or text in all caps.
+- LOOK FOR JUNK: Any irrelevant "metadata" at the very end of the book like "Scanned by", "Proof-read by", "Version 0.X", or any other useless/incomprehensible "junk text" should be treated as nontraditional "end matter" content!!!
+- BE CAUTIOUS: The provided final book section may not actually contain the transition to the "end matter" content, or even have any "end matter" content at all. Don't assume it does!
+
+Respond using this JSON format:
+
+```json
+{
+    "candidates": ["string1", "string2", ...],
+    "analysis": "string",
+    "first_header": "string",
+    "first_paragraph": "string"
+}
+```
+
+1. The `candidates` array should list all the headers and paragraphs that you think could potentially be the beginning of the book's supplementary content.
+2. Use the `analysis` string to explain how you evaluated each candidate in relation to the surrounding text, or why you think the book doesn't actually have any "end matter" content.
+3. If you are reasonably confident you have successfully identified the beginning, then set `first_header` and `first_paragraph` based on your analysis.
+4. If you are still unsure of where the supplementary content begins, then set both `first_header` and `first_paragraph` to `null`.
+5. If you have identified the first paragraph but think there is no header that goes before it, then set only `first_header` to `null`.
+6. If your analysis indicates that there is no supplementary content present, then set both `first_header` and `first_paragraph` to "none".

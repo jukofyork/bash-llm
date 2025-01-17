@@ -1,0 +1,44 @@
+# Task: Determine if this book is fiction or nonfiction
+
+Examine both the beginning and ending sections of this book:
+
+```text
+${start_context}
+```
+
+```text
+${end_context}
+```
+
+Analyze the text to determine if this is fiction or nonfiction. Look for these key indicators:
+
+FICTION indicators:
+- Narrative scenes with dialogue and character interactions
+- Descriptions of characters' thoughts and feelings
+- Story-like plot elements and dramatic scenes
+- Use of literary devices like metaphors and vivid descriptions
+- Events that appear imagined rather than documented
+
+NONFICTION indicators:
+- Facts, dates, and real historical events
+- Academic or technical language
+- Citations or references to sources
+- Explanatory or instructional tone
+- Discussion of real people, places or concepts
+- Analytical or argumentative structure
+
+Note: Focus only on distinguishing between fiction and nonfiction. Do not get distracted by specific genres (like romance, mystery, biography, textbook etc).
+
+Respond using this JSON format:
+
+```json
+{
+    "analysis": "string",
+    "genre": "fiction"|"nonfiction"|"unknown"
+}
+```
+
+Guidelines:
+- In your analysis, cite specific examples from the text that support your classification.
+- Only classify as "fiction" or "nonfiction" if you are reasonably confident and can see clear evidence.
+- Use "unknown" if the evidence is ambiguous or insufficient.
