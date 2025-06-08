@@ -70,8 +70,20 @@ expect_success "JSON from stdin" \
     "John"
 
 expect_success "Newline separator" \
-    './json_extract.sh -s "\\n" '\''{"name":"John","age":42}'\'' name age' \
+    './json_extract.sh -s $'"'\n'"' '\''{"name":"John","age":42}'\'' name age' \
     $'John\n42'
+
+expect_success "Non-existent key returns null_str" \
+    './json_extract.sh -n "NULL" '\''{"name":"John"}'\'' missing' \
+    "NULL"
+
+expect_failure "Empty input file" \
+    'echo "" > "$test_dir/empty.json" && ./json_extract.sh -i "$test_dir/empty.json" name' \
+    "No JSON content provided"
+
+expect_success "Empty input file, but valid empty JSON" \
+    'echo "{}" > "$test_dir/empty.json" && ./json_extract.sh -i "$test_dir/empty.json" name' \
+    "null"
 
 # Error conditions
 expect_failure "No JSON provided" \
@@ -88,11 +100,19 @@ expect_failure "Invalid JSON" \
 
 expect_failure "Missing JSON file" \
     './json_extract.sh -i nonexistent.json name' \
-    "No such file"
+    "File not found"
 
 expect_failure "Invalid option" \
     './json_extract.sh --invalid option' \
     "Unknown option"
+
+expect_failure "Invalid separator" \
+    './json_extract.sh -s "::" '\''{"name":"John"}'\'' name' \
+    "Separator must be exactly one character"
+
+expect_failure "Output file failure" \
+    './json_extract.sh -o "/nonexistent/path" '\''{"name":"John"}'\'' name' \
+    "Failed to write to output file"
 
 # Output file testing
 expect_success "Output to file" \

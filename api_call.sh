@@ -1,29 +1,17 @@
 #!/bin/bash
 
-# Check for required commands
-required_commands=(
-    "jq"
-    "curl"
-)
-missing_commands=()
-for cmd in "${required_commands[@]}"; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        missing_commands+=("$cmd")
-    fi
-done
+# Load common functions
+source "$(dirname "$0")/common.sh"
 
-if [ "${#missing_commands[@]}" -gt 0 ]; then
-    echo "ERROR: The following required commands are missing:" >&2
-    for cmd in "${missing_commands[@]}"; do
-        echo "  - $cmd" >&2
-    done
-    exit 1
-fi
+# Check for required commands
+check_commands jq curl
 
 # Environment variables
 : "${OPENAI_API_ENDPOINT:=https://api.openai.com/v1}"
-: "${OPENAI_MODEL:=gpt-4o-mini}"
+: "${OPENAI_MODEL:=gpt-4.1-nano}"
 : "${OPENAI_API_KEY:=""}"
+: "${OPENAI_TEMPERATURE:=0.0}"
+: "${OPENAI_RESPONSE_FORMAT:=text}"
 
 show_usage() {
     cat << EOF
@@ -32,22 +20,26 @@ Usage: $(basename "$0") [OPTIONS] [SYSTEM] [USER]
 Sends messages to OpenAI API and returns the JSON response.
 
 Arguments:
-  SYSTEM               Optional system message
-  USER                 Optional user message
+  SYSTEM                  Optional system message
+  USER                    Optional user message
 
 Options:
-  -s, --system FILE    Read system message from file (use - for stdin)
-  -u, --user FILE      Read user message from file (use - for stdin)
-  -o, --output FILE    Write response to file instead of stdout
-  -e, --endpoint URL   API endpoint (default: $OPENAI_API_ENDPOINT)
-  -m, --model NAME     Model name (default: $OPENAI_MODEL)
-  -k, --key KEY        API key (default: \$OPENAI_API_KEY)
-  -h, --help           Show this help message
+  -s, --system FILE       Read system message from file (use - for stdin)
+  -u, --user FILE         Read user message from file (use - for stdin)
+  -o, --output FILE       Write response to file instead of stdout
+  -e, --endpoint URL      API endpoint (default: $OPENAI_API_ENDPOINT)
+  -m, --model NAME        Model name (default: $OPENAI_MODEL)
+  -k, --key KEY           API key (default: \$OPENAI_API_KEY)
+  -t, --temp NUM          Temperature setting (0.0-2.0, default: $OPENAI_TEMPERATURE)
+  -f, --format TYPE       Response format (text|json, default: $OPENAI_RESPONSE_FORMAT)
+  -h, --help              Show this help message
 
 Environment Variables:
-  OPENAI_API_ENDPOINT  API endpoint (can be set with --endpoint)
-  OPENAI_MODEL         Model name (can be set with --model)
-  OPENAI_API_KEY       API key (can be set with --key)
+  OPENAI_API_ENDPOINT     API endpoint (can be set with --endpoint)
+  OPENAI_MODEL            Model name (can be set with --model)
+  OPENAI_API_KEY          API key (can be set with --key)
+  OPENAI_TEMPERATURE      Temperature setting (can be set with --temp)
+  OPENAI_RESPONSE_FORMAT  Response format (can be set with --format)
 
 Input Handling:
   - USER message can come from:
@@ -64,6 +56,8 @@ Examples:
   $(basename "$0") "You are helpful" "Tell me about bash"
   $(basename "$0") -s system.txt -u prompt.txt
   echo "Hello" | $(basename "$0") -s system.txt
+  $(basename "$0") -s - "Tell me about bash" <<< "Be helpful"
+  $(basename "$0") -u - <<< "Tell me about bash"
 EOF
     exit 0
 }
@@ -78,10 +72,16 @@ user_message=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         -s|--system)
+            if [[ -n "$system_file" ]]; then
+                error_exit "Multiple system input sources specified"
+            fi
             system_file="$2"
             shift 2
             ;;
         -u|--user)
+            if [[ -n "$user_file" ]]; then
+                error_exit "Multiple user input sources specified"
+            fi
             user_file="$2"
             shift 2
             ;;
@@ -101,12 +101,31 @@ while [[ $# -gt 0 ]]; do
             OPENAI_API_KEY="$2"
             shift 2
             ;;
+        -t|--temp)
+            OPENAI_TEMPERATURE="$2"
+            shift 2
+            ;;
+        -f|--format)
+            if [[ "$2" != "text" && "$2" != "json" ]]; then
+                error_exit "Invalid format: $2 (must be 'text' or 'json')"
+            fi
+            OPENAI_RESPONSE_FORMAT="$2"
+            shift 2
+            ;;
         -h|--help)
             show_usage
             ;;
         -*)
-            echo "ERROR: Unknown option: $1" >&2
-            exit 1
+            if [[ "$1" == "-" ]]; then
+                if [[ -z "$user_file" ]]; then
+                    user_file="-"
+                else
+                    error_exit "Unexpected argument: $1"
+                fi
+                shift
+            else
+            error_exit "Unknown option: $1"
+            fi
             ;;
         *)
             # Handle positional arguments
@@ -115,8 +134,7 @@ while [[ $# -gt 0 ]]; do
             elif [[ -z "$user_message" ]]; then
                 user_message="$1"
             else
-                echo "ERROR: Unexpected argument: $1" >&2
-                exit 1
+                error_exit "Unexpected argument: $1"
             fi
             shift
             ;;
@@ -124,31 +142,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required API key
-if [[ -z "$OPENAI_API_KEY" ]]; then
-    echo "ERROR: OpenAI API key must be provided via OPENAI_API_KEY or -k" >&2
-    exit 1
+if [[ -z "$OPENAI_API_KEY" ]] && [[ "$OPENAI_API_ENDPOINT" != *"localhost"* ]] && [[ "$OPENAI_API_ENDPOINT" != *"127.0.0.1"* ]]; then
+    error_exit "OpenAI API key must be provided via OPENAI_API_KEY or -k"
 fi
 
 # Read from files if specified
 if [[ -n "$system_file" ]]; then
-    if [[ "$system_file" == "-" ]]; then
-        system_message=$(cat)
-    else
-        system_message=$(<"$system_file")
-    fi
+    system_message=$(read_input "$system_file")
 fi
 
 if [[ -n "$user_file" ]]; then
-    if [[ "$user_file" == "-" ]]; then
-        user_message=$(cat)
-    else
-        user_message=$(<"$user_file")
-    fi
+    user_message=$(read_input "$user_file")
 fi
 
 # If no user message yet, try stdin
 if [[ -z "$user_message" ]] && [[ ! -t 0 ]]; then
-    user_message=$(cat)
+    user_message=$(read_input)
 fi
 
 # If we have only one positional arg, it's the user message
@@ -160,8 +169,7 @@ fi
 
 # Validate we have a user message
 if [[ -z "$user_message" ]]; then
-    echo "ERROR: No user message provided" >&2
-    exit 1
+    error_exit "No user message provided"
 fi
 
 # Construct messages array based on whether we have a system message
@@ -178,52 +186,54 @@ messages_json=$(
     fi
 )
 
+# Handle response format
+response_format_json=""
+if [[ "$OPENAI_RESPONSE_FORMAT" == "json" ]]; then
+    response_format_json='response_format: {type: "json_object"},'
+fi
+
 # Make API request using jq to handle JSON escaping
 response=$(curl -s \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $OPENAI_API_KEY" \
+    ${OPENAI_API_KEY:+-H "Authorization: Bearer $OPENAI_API_KEY"} \
     -d "$(jq -n \
         --arg model "$OPENAI_MODEL" \
-        --argjson msgs "$messages_json" '{
-            model: $model,
-            messages: $msgs,
-            response_format: {type: "json_object"},
-            temperature: 0.0
-        }')" \
+        --argjson msgs "$messages_json" \
+        --argjson temp "$OPENAI_TEMPERATURE" \
+        "{
+            model: \$model,
+            messages: \$msgs,
+            $response_format_json
+            temperature: \$temp
+        }")" \
     "$OPENAI_API_ENDPOINT/chat/completions")
 
 # Check for curl errors
-if [[ $? -ne 0 ]]; then
-    echo "ERROR: API request failed" >&2
-    exit 1
+curl_exit=$?
+if [[ $curl_exit -ne 0 ]]; then
+    error_exit "API request failed (curl exit $curl_exit)"
 fi
 
 # Validate API response
 if ! echo "$response" | jq -e '.choices' >/dev/null 2>&1; then
-    echo "ERROR: Invalid API response - $(echo "$response" | jq -r '.error.message // "Unknown error"')" >&2
-    exit 1
+    error_msg=$(echo "$response" | jq -r '.error.message // "Unknown error"')
+    error_exit "Invalid API response - $error_msg"
 fi
 
 # Extract and process response content
 response_json=$(echo "$response" | jq -r '.choices[0].message.content')
 
-# Attempt to fix truncated JSON
-if [[ "$response_json" =~ ^[^}]*$ ]]; then
-    echo "WARNING: Attempting to fix truncated JSON response..." >&2
-    response_json="${response_json}\"}"
-fi
-
 # Validate and output JSON response
-if ! echo "$response_json" | jq -e '.' >/dev/null 2>&1; then
-    echo "ERROR: Failed to extract a valid JSON response" >&2
-    exit 1
+if [[ "$OPENAI_RESPONSE_FORMAT" == "json" ]]; then
+    if ! echo "$response_json" | jq -e '.' >/dev/null 2>&1; then
+        error_exit "Failed to extract a valid JSON response"
+    fi
 fi
 
-# Output the JSON response
+# Output the response
 if [[ -n "$output_file" ]]; then
     if ! echo "$response_json" > "$output_file"; then
-        echo "ERROR: Failed to write to output file: $output_file" >&2
-        exit 1
+        error_exit "Failed to write to output file: $output_file"
     fi
 else
     echo "$response_json"

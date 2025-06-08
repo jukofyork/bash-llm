@@ -1,23 +1,10 @@
 #!/bin/bash
 
-# Check for required commands
-required_commands=(
-    "jq"
-)
-missing_commands=()
-for cmd in "${required_commands[@]}"; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        missing_commands+=("$cmd")
-    fi
-done
+# Load common functions
+source "$(dirname "$0")/common.sh"
 
-if [ "${#missing_commands[@]}" -gt 0 ]; then
-    echo "ERROR: The following required commands are missing:" >&2
-    for cmd in "${missing_commands[@]}"; do
-        echo "  - $cmd" >&2
-    done
-    exit 1
-fi
+# Check dependencies
+check_commands jq
 
 show_usage() {
     cat << EOF
@@ -88,26 +75,21 @@ while [[ $# -gt 0 ]]; do
             show_usage
             ;;
         -*)
-            # Only match options that start with - and have more characters
-            if [[ ${#1} -gt 1 ]]; then
-                echo "ERROR: Unknown option: $1" >&2
-                exit 1
-            fi
-            # Single - is treated as a filename
-            if [[ -z "$input_file" ]] && [[ -z "$json_content" ]]; then
-                json_content="$1"
+            if [[ "$1" == "-" ]]; then
+                if [[ -z "$input_file" ]]; then
+                    input_file="-"
+                else
+                    error_exit "Unexpected argument: $1"
+                fi
+                shift
             else
-                # Additional arguments are keys
-                keys+=("$1")
+                error_exit "Unknown option: $1"
             fi
-            shift
             ;;
         *)
-            # First non-option argument is JSON (if no input file)
             if [[ -z "$input_file" ]] && [[ -z "$json_content" ]]; then
                 json_content="$1"
             else
-                # Additional arguments are keys
                 keys+=("$1")
             fi
             shift
@@ -117,33 +99,41 @@ done
 
 # Read JSON content
 if [[ -n "$input_file" ]]; then
-    if [[ "$input_file" == "-" ]]; then
-        json_content=$(cat)
-    else
-        json_content=$(<"$input_file")
+    if [[ "$input_file" != "-" && ! -f "$input_file" ]]; then
+        error_exit "File not found: $input_file"
     fi
-elif [[ "$json_content" == "-" ]]; then
-    json_content=$(cat)
-elif [[ -z "$json_content" ]] && [[ ! -t 0 ]]; then
-    json_content=$(cat)
+    json_content=$(read_input "$input_file")
+elif [[ -n "$json_content" ]]; then
+    : # already have content
+elif [[ ! -t 0 ]]; then
+    json_content=$(read_input)
+else
+    error_exit "No JSON content provided"
+fi
+
+# Validate we have JSON content (only if we didn't already error)
+if [[ -z "$json_content" ]]; then
+    error_exit "No JSON content provided"
 fi
 
 # Validate we have JSON content
 if [[ -z "$json_content" ]]; then
-    echo "ERROR: No JSON content provided" >&2
-    exit 1
+    error_exit "No JSON content provided"
 fi
 
 # Validate JSON syntax
 if ! echo "$json_content" | jq -e '.' >/dev/null 2>&1; then
-    echo "ERROR: Invalid JSON content" >&2
-    exit 1
+    error_exit "Invalid JSON content"
 fi
 
 # Validate we have at least one key
 if [ ${#keys[@]} -eq 0 ]; then
-    echo "ERROR: No keys specified" >&2
-    exit 1
+    error_exit "No keys specified"
+fi
+
+# Validate separator is a single character
+if [[ ${#separator} -ne 1 ]]; then
+    error_exit "Separator must be exactly one character"
 fi
 
 # Extract values and handle nulls
@@ -151,8 +141,7 @@ values=()
 for key in "${keys[@]}"; do
     value=$(echo "$json_content" | jq -r ".$key // \"$null_str\"")
     if [ $? -ne 0 ]; then
-        echo "ERROR: Failed to extract key: $key" >&2
-        exit 1
+        error_exit "Failed to extract key: $key"
     fi
     values+=("$value")
 done
@@ -164,8 +153,7 @@ result=${result%"$separator"}  # Remove trailing separator
 # Output the result
 if [[ -n "$output_file" ]]; then
     if ! echo "$result" > "$output_file"; then
-        echo "ERROR: Failed to write to output file: $output_file" >&2
-        exit 1
+        error_exit "Failed to write to output file: $output_file"
     fi
 else
     echo "$result"
