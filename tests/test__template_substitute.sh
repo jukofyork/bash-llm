@@ -45,6 +45,9 @@ echo "Hello \${NAME}!" > "$test_dir/template.txt"
 echo "John" > "$test_dir/name.txt"
 echo "This is \${NAME}'s \${BIO}" > "$test_dir/complex.txt"
 echo "biography text" > "$test_dir/bio.txt"
+echo "Special chars: \${CHARS}" > "$test_dir/special.txt"
+echo '$$$***///' > "$test_dir/chars.txt"
+echo > "$test_dir/empty.txt"
 
 # Valid input combinations
 expect_success "Direct template and variable" \
@@ -71,6 +74,18 @@ expect_success "Template from stdin" \
     'echo "Hello \${NAME}!" | ./template_substitute.sh - NAME="World"' \
     "Hello World!"
 
+expect_success "Special characters in values" \
+    './template_substitute.sh "Test \${CHARS}" CHARS=\<"$test_dir/chars.txt"' \
+    "Test \$\$\$***///"
+
+expect_success "Empty variable value" \
+    './template_substitute.sh "Test \${EMPTY}" EMPTY=""' \
+    "Test "
+
+expect_success "Explicit stdin with -i -" \
+    'echo "Hello \${NAME}!" | ./template_substitute.sh -i - NAME="World"' \
+    "Hello World!"
+
 # Error conditions
 expect_failure "No template provided" \
     './template_substitute.sh' \
@@ -78,7 +93,7 @@ expect_failure "No template provided" \
 
 expect_failure "Missing template file" \
     './template_substitute.sh -i nonexistent.txt NAME="World"' \
-    "No such file"
+    "File not found"
 
 expect_failure "Missing variable file" \
     './template_substitute.sh "Hello \${NAME}!" NAME=\<nonexistent.txt' \
@@ -87,6 +102,14 @@ expect_failure "Missing variable file" \
 expect_failure "Invalid option" \
     './template_substitute.sh --invalid option' \
     "Unknown option"
+
+expect_failure "Empty variable name" \
+    './template_substitute.sh "Hello \${NAME}!" =value' \
+    "Invalid variable assignment"
+
+expect_failure "No variables to substitute" \
+    './template_substitute.sh "Static text"' \
+    "No variables to substitute"
 
 # Output file testing
 expect_success "Output to file" \

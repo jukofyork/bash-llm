@@ -1,25 +1,10 @@
 #!/bin/bash
 
-# Check for required commands
-required_commands=(
-    "sed"
-    "grep"
-    "tre-agrep"
-)
-missing_commands=()
-for cmd in "${required_commands[@]}"; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        missing_commands+=("$cmd")
-    fi
-done
+# Load common functions
+source "$(dirname "$0")/common.sh"
 
-if [ "${#missing_commands[@]}" -gt 0 ]; then
-    echo "ERROR: The following required commands are missing:" >&2
-    for cmd in "${missing_commands[@]}"; do
-        echo "  - $cmd" >&2
-    done
-    exit 1
-fi
+# Check for required commands
+check_commands sed grep tre-agrep
 
 show_usage() {
     cat << EOF
@@ -34,7 +19,7 @@ Options:
   -i, --input FILE   Read text to search from file (use - for stdin)
   -o, --output FILE  Write result to file instead of stdout
   -e, --errors NUM   Maximum edit distance for fuzzy matching (default: 3)
-  -h, --help        Show this help message
+  -h, --help         Show this help message
 
 Input Handling:
   - Text to search can come from:
@@ -114,16 +99,6 @@ get_line_number_fuzzy() {
     fi
 }
 
-# Function to output result
-output_result() {
-    local result="$1"
-    if [[ -n "$output_file" ]]; then
-        echo "$result" > "$output_file"
-    else
-        echo "$result"
-    fi
-}
-
 # Initialize variables
 input_file=""
 output_file=""
@@ -149,15 +124,13 @@ while [[ $# -gt 0 ]]; do
             show_usage
             ;;
         -*)
-            echo "ERROR: Unknown option: $1" >&2
-            exit 1
+            error_exit "Unknown option: $1"
             ;;
         *)
             if [[ -z "$pattern" ]]; then
                 pattern="$1"
             else
-                echo "ERROR: Unexpected argument: $1" >&2
-                exit 1
+                error_exit "Unexpected argument: $1"
             fi
             shift
             ;;
@@ -165,16 +138,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate we have a pattern
-if [[ -z "$pattern" ]]; then
-    echo "ERROR: No search pattern provided" >&2
-    exit 1
-fi
+[[ -n "$pattern" ]] || error_exit "No search pattern provided"
 
 # Validate minimum pattern length
-if [[ ${#pattern} -lt 2 ]]; then
-    echo "ERROR: Pattern must be at least 2 characters long" >&2
-    exit 1
-fi
+[[ ${#pattern} -ge 2 ]] || error_exit "Pattern must be at least 2 characters long"
 
 # Create temporary files
 temp_input=$(mktemp)
@@ -186,13 +153,13 @@ if [[ -n "$input_file" ]]; then
     if [[ "$input_file" == "-" ]]; then
         cat > "$temp_input"
     else
+        [[ -f "$input_file" ]] || error_exit "File not found: $input_file"
         cat "$input_file" > "$temp_input"
     fi
 elif [[ ! -t 0 ]]; then
     cat > "$temp_input"
 else
-    echo "ERROR: No input provided" >&2
-    exit 1
+    error_exit "No input provided"
 fi
 
 # Normalize input and pattern
@@ -205,20 +172,28 @@ result=0
 # 1. Try exact match
 result=$(get_line_number_exact "$pattern" "$temp_input")
 if [ "$result" -gt 0 ]; then
-    output_result "$result"
+    if [[ -n "$output_file" ]]; then
+        echo "$result" > "$output_file" || error_exit "Failed to write to output file: $output_file"
+    else
+        echo "$result"
+    fi
     exit 0
 elif [ "$result" -lt 0 ]; then
-    output_result "0"
+    echo "0"
     exit 1
 fi
 
 # 2. Try normalized exact match
 result=$(get_line_number_exact "$normalized_pattern" "$temp_normalized")
 if [ "$result" -gt 0 ]; then
-    output_result "$result"
+    if [[ -n "$output_file" ]]; then
+        echo "$result" > "$output_file" || error_exit "Failed to write to output file: $output_file"
+    else
+        echo "$result"
+    fi
     exit 0
 elif [ "$result" -lt 0 ]; then
-    output_result "0"
+    echo "0"
     exit 1
 fi
 
@@ -226,10 +201,14 @@ fi
 for (( i=0; i<=max_errors; i++ )); do
     result=$(get_line_number_fuzzy "$normalized_pattern" "$temp_normalized" "$i")
     if [ "$result" -gt 0 ]; then
-        output_result "$result"
+        if [[ -n "$output_file" ]]; then
+            echo "$result" > "$output_file" || error_exit "Failed to write to output file: $output_file"
+        else
+            echo "$result"
+        fi
         exit 0
     elif [ "$result" -lt 0 ]; then
-        output_result "0"
+        echo "0"
         exit 1
     fi
 done
@@ -263,10 +242,14 @@ done
 
 # Check if exactly one segment found a unique match
 if [ ${#unique_matches[@]} -eq 1 ]; then
-    output_result "${unique_matches[0]}"
+    if [[ -n "$output_file" ]]; then
+        echo "${unique_matches[0]}" > "$output_file" || error_exit "Failed to write to output file: $output_file"
+    else
+        echo "${unique_matches[0]}"
+    fi
     exit 0
 fi
 
 # No unique match found
-output_result "0"
+echo "0"
 exit 1

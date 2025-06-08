@@ -164,7 +164,7 @@ expect_failure "No input provided" \
 
 expect_failure "Missing input file" \
     './find_line_number.sh -i nonexistent.txt "pattern"' \
-    "No such file"
+    "File not found"
 
 expect_failure "Invalid option" \
     './find_line_number.sh --invalid option' \

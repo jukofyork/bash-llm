@@ -7,8 +7,11 @@ source "$(dirname "$0")/common.sh"
 check_commands sed
 
 show_usage() {
-    help_header "Substitutes variables in a template string with provided values"
     cat << EOF
+Usage: $(basename "$0") [OPTIONS] [TEMPLATE] [VAR=VALUE|VAR=<FILE...]
+
+Substitutes variables in a template string with provided values.
+
 Arguments:
   TEMPLATE           Template string
   VAR=VALUE          Variable assignment (direct value)
@@ -19,10 +22,26 @@ Options:
   -o, --output FILE  Write result to file instead of stdout
   -h, --help         Show this help message
 
+Input Handling:
+  - Template content can come from:
+    1. Command line (first argument)
+    2. --input FILE option
+    3. Standard input if no other source
+    4. Explicit stdin with -
+
+  - Variable assignments must be specified as:
+    VAR=VALUE        Direct value assignment
+    VAR=<FILE        Use contents of FILE as value
+
 Variable Format:
   \${VARNAME}         Standard variable reference
+
+Examples:
+  $(basename "$0") "Hello \${NAME}!" NAME="World"
+  $(basename "$0") -i template.txt NAME="John" BIO=<bio.txt
+  echo "Hello \${NAME}!" | $(basename "$0") - NAME=<names.txt
+  echo "Hello \${NAME}!" | $(basename "$0") -i - NAME="World"
 EOF
-    help_footer
     exit 0
 }
 
@@ -47,11 +66,9 @@ while [[ $# -gt 0 ]]; do
             show_usage
             ;;
         -*)
-            # Only match options that start with - and have more characters
             if [[ ${#1} -gt 1 ]]; then
                 error_exit "Unknown option: $1"
             fi
-            # Single - is treated as a filename
             if [[ -z "$template" ]]; then
                 template="$1"
             else
@@ -60,16 +77,16 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *=*)
-            # Handle variable assignments
             var_name="${1%%=*}"
             var_value="${1#*=}"
             
-            # Check if value should be read from file
+            if [[ -z "$var_name" ]]; then
+                error_exit "Invalid variable assignment: $1"
+            fi
+            
             if [[ "$var_value" == "<"* ]]; then
                 file_name="${var_value#<}"
-                if [[ ! -f "$file_name" ]]; then
-                    error_exit "Variable file not found: $file_name"
-                fi
+                [[ -f "$file_name" ]] || error_exit "Variable file not found: $file_name"
                 var_value=$(<"$file_name")
             fi
             
@@ -77,7 +94,6 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            # First non-option argument is the template
             if [[ -z "$template" ]]; then
                 template="$1"
             else
@@ -89,27 +105,40 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Read template content
-template=$(read_input "$input_file" "$template")
+if [[ -n "$input_file" ]]; then
+    template=$(read_input "$input_file")
+elif [[ -n "$template" ]]; then
+    : # already have content
+elif [[ ! -t 0 ]]; then
+    template=$(read_input)
+fi
+
+# Handle explicit stdin marker (-)
+if [[ "$template" == "-" ]]; then
+    template=$(read_input)
+fi
 
 # Validate we have a template
-if [[ -z "$template" ]]; then
-    error_exit "No template provided"
+[[ -n "$template" ]] || error_exit "No template provided"
+
+# Check for at least one variable to substitute
+if [[ "${#variables[@]}" -eq 0 ]] && ! grep -qE '\$\{[a-zA-Z_][a-zA-Z0-9_]*\}' <<< "$template"; then
+    error_exit "No variables to substitute in template"
 fi
 
 # Perform substitutions
 result="$template"
 for var_name in "${!variables[@]}"; do
     var_value="${variables[$var_name]}"
-    # Escape special characters in the replacement string
-    escaped_value=$(printf '%s\n' "$var_value" | sed 's:[][\/.^$*]:\\&:g')
+    # Escape both special regex chars and replacement string chars
+    escaped_value=$(printf '%s\n' "$var_value" | 
+        sed -e 's/[][\/&^$*.|]/\\&/g' -e 's/^-/\\-/')
     result=$(echo "$result" | sed "s/\${$var_name}/$escaped_value/g")
 done
 
 # Output the result
 if [[ -n "$output_file" ]]; then
-    if ! echo "$result" > "$output_file"; then
-        error_exit "Failed to write to output file: $output_file"
-    fi
+    echo "$result" > "$output_file" || error_exit "Failed to write to output file: $output_file"
 else
     echo "$result"
 fi
